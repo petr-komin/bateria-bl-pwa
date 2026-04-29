@@ -15,6 +15,10 @@ const rssiBars     = [
 
 let bleDevice = null
 let bleServer = null
+let reconnectTimer = null
+let reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 10
+const RECONNECT_DELAY_MS = 2000
 
 function setStatus(state, text) {
   statusEl.className = `status ${state}`
@@ -88,6 +92,7 @@ async function connect() {
     await characteristic.startNotifications()
     characteristic.addEventListener('characteristicvaluechanged', onTemperatureUpdate)
 
+    reconnectAttempts = 0
     setStatus('connected', `Pripojeno: ${bleDevice.name || 'ESP32'}`)
     btnConnect.textContent = 'Odpojit'
     btnConnect.classList.add('connected')
@@ -107,19 +112,59 @@ async function connect() {
 }
 
 function onDisconnected() {
+  bleServer = null
+
+  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && bleDevice) {
+    reconnectAttempts++
+    setStatus('connecting', `Znovupripojuji... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
+    btnConnect.textContent = 'Odpojit'
+    btnConnect.classList.add('connected')
+    btnConnect.disabled = false
+    reconnectTimer = setTimeout(reconnect, RECONNECT_DELAY_MS)
+  } else {
+    setStatus('disconnected', 'Odpojeno')
+    btnConnect.textContent = 'Pripojit'
+    btnConnect.classList.remove('connected')
+    btnConnect.disabled = false
+    bleDevice = null
+    reconnectAttempts = 0
+  }
+}
+
+async function reconnect() {
+  if (!bleDevice) return
+  try {
+    setStatus('connecting', `Znovupripojuji... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
+    bleServer = await bleDevice.gatt.connect()
+    const service = await bleServer.getPrimaryService(SERVICE_UUID)
+    const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID)
+    await characteristic.startNotifications()
+    characteristic.addEventListener('characteristicvaluechanged', onTemperatureUpdate)
+
+    reconnectAttempts = 0
+    setStatus('connected', `Pripojeno: ${bleDevice.name || 'ESP32'}`)
+    btnConnect.textContent = 'Odpojit'
+    btnConnect.classList.add('connected')
+    btnConnect.disabled = false
+  } catch (err) {
+    console.warn('Reconnect selhal:', err)
+    onDisconnected()
+  }
+}
+
+function disconnect() {
+  reconnectAttempts = MAX_RECONNECT_ATTEMPTS // zastavi auto-reconnect
+  clearTimeout(reconnectTimer)
+  if (bleDevice && bleDevice.gatt.connected) {
+    bleDevice.gatt.disconnect()
+  }
   setStatus('disconnected', 'Odpojeno')
   btnConnect.textContent = 'Pripojit'
   btnConnect.classList.remove('connected')
   btnConnect.disabled = false
   bleDevice = null
   bleServer = null
-}
-
-function disconnect() {
-  if (bleDevice && bleDevice.gatt.connected) {
-    bleDevice.gatt.disconnect()
-  }
-  onDisconnected()
+  reconnectAttempts = 0
 }
 
 btnConnect.addEventListener('click', () => {
