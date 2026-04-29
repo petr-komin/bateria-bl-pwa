@@ -61,12 +61,17 @@ void setup() {
 
   pService->start();
 
+  // BLE 5.0 Long Range - Coded PHY (S=8, nejvetsi dosah)
+  //Advertise na vsech PHY: 1M (kompatibilita) + Coded (dosah)
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
+  pAdvertising->setPrimaryPhy(BLE_HCI_LE_PHY_CODED);
+  pAdvertising->setSecondaryPhy(BLE_HCI_LE_PHY_CODED);
   NimBLEDevice::startAdvertising();
 
-  Serial.println("BLE advertising spusten. Cekam na pripojeni...");
+  Serial.println("BLE Long Range (Coded PHY) advertising spusten.");
+  Serial.println("Cekam na pripojeni...");
 }
 
 void loop() {
