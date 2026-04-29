@@ -28,13 +28,13 @@ int readRSSI() {
 }
 
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
+  void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
     deviceConnected = true;
-    connHandle = desc->conn_handle;
+    connHandle = connInfo.getConnHandle();
     Serial.printf("Klient pripojen, handle=%d\n", connHandle);
   }
 
-  void onDisconnect(NimBLEServer* pServer) override {
+  void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
     deviceConnected = false;
     connHandle = BLE_HS_CONN_HANDLE_NONE;
     Serial.println("Klient odpojen - restartuji advertising");
@@ -47,7 +47,7 @@ void setup() {
   Serial.println("Spoustim BLE server...");
 
   NimBLEDevice::init("ESP32-C3-Temp");
-  NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+  NimBLEDevice::setPower(9); // +9 dBm
 
   pServer = NimBLEDevice::createServer();
   pServer->setCallbacks(new ServerCallbacks());
@@ -61,8 +61,7 @@ void setup() {
 
   pService->start();
 
-  // BLE 5.0 Long Range - Coded PHY (S=8, nejvetsi dosah)
-  //Advertise na vsech PHY: 1M (kompatibilita) + Coded (dosah)
+  // BLE 5.0 Long Range - Coded PHY (S=8)
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
@@ -82,7 +81,7 @@ void loop() {
     char buf[32];
     snprintf(buf, sizeof(buf), "{\"t\":%.1f,\"r\":%d}", temp, rssi);
 
-    pCharacteristic->setValue((uint8_t*)buf, strlen(buf));
+    pCharacteristic->setValue(buf);
     pCharacteristic->notify();
 
     Serial.printf("Odeslan: %s\n", buf);
