@@ -8,10 +8,10 @@
 NimBLEServer* pServer = nullptr;
 NimBLECharacteristic* pCharacteristic = nullptr;
 bool deviceConnected = false;
+uint16_t connHandle = BLE_HS_CONN_HANDLE_NONE;
 
 // Simulovana teplota jadra ESP32
 float simulateTemperature() {
-  // Zakladni teplota 35-45 °C s malymi nahodnymi zmenami
   static float temp = 38.0f;
   temp += ((float)random(-20, 21)) / 100.0f;
   if (temp < 30.0f) temp = 30.0f;
@@ -19,14 +19,24 @@ float simulateTemperature() {
   return temp;
 }
 
+// Precti RSSI pripojeneho klienta
+int readRSSI() {
+  if (connHandle == BLE_HS_CONN_HANDLE_NONE) return 0;
+  int8_t rssi = 0;
+  ble_gap_conn_rssi(connHandle, &rssi);
+  return (int)rssi;
+}
+
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer* pServer) override {
+  void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
     deviceConnected = true;
-    Serial.println("Klient pripojen");
+    connHandle = desc->conn_handle;
+    Serial.printf("Klient pripojen, handle=%d\n", connHandle);
   }
 
   void onDisconnect(NimBLEServer* pServer) override {
     deviceConnected = false;
+    connHandle = BLE_HS_CONN_HANDLE_NONE;
     Serial.println("Klient odpojen - restartuji advertising");
     NimBLEDevice::startAdvertising();
   }
@@ -62,13 +72,15 @@ void setup() {
 void loop() {
   if (deviceConnected) {
     float temp = simulateTemperature();
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.1f", temp);
+    int rssi = readRSSI();
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "{\"t\":%.1f,\"r\":%d}", temp, rssi);
 
     pCharacteristic->setValue((uint8_t*)buf, strlen(buf));
     pCharacteristic->notify();
 
-    Serial.printf("Odeslan: %s °C\n", buf);
+    Serial.printf("Odeslan: %s\n", buf);
   }
   delay(1000);
 }

@@ -131,6 +131,33 @@ main {
   padding-top: 1rem;
 }
 
+.rssi-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rssi-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.rssi-icon rect {
+  fill: var(--surface);
+  transition: fill 0.4s ease;
+}
+
+.rssi-icon rect.active {
+  fill: var(--accent);
+}
+
+.rssi-value {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+}
+
 .last-update {
   font-size: 0.8rem;
   color: var(--text-muted);

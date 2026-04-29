@@ -21,6 +21,15 @@
         <div id="temperature" class="temperature">--.-</div>
         <div class="unit">°C</div>
       </div>
+      <div id="rssi-display" class="rssi-display">
+        <svg id="rssi-icon" class="rssi-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect id="bar1" x="2" y="18" width="4" height="3" rx="1"/>
+          <rect id="bar2" x="8" y="13" width="4" height="8" rx="1"/>
+          <rect id="bar3" x="14" y="8" width="4" height="13" rx="1"/>
+          <rect id="bar4" x="20" y="3" width="4" height="18" rx="1"/>
+        </svg>
+        <span id="rssi-value" class="rssi-value">-- dBm</span>
+      </div>
       <div id="last-update" class="last-update"></div>
     </main>
 

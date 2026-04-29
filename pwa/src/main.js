@@ -5,6 +5,13 @@ const btnConnect   = document.getElementById('btn-connect')
 const statusEl     = document.getElementById('status')
 const tempEl       = document.getElementById('temperature')
 const lastUpdateEl = document.getElementById('last-update')
+const rssiValueEl  = document.getElementById('rssi-value')
+const rssiBars     = [
+  document.getElementById('bar1'),
+  document.getElementById('bar2'),
+  document.getElementById('bar3'),
+  document.getElementById('bar4'),
+]
 
 let bleDevice = null
 let bleServer = null
@@ -18,15 +25,41 @@ function formatTime(date) {
   return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+// RSSI -30 az -50 = vyborny (4 bary), -51 az -65 = dobry (3), -66 az -75 = ok (2), -76+ = slaby (1)
+function updateRSSI(rssi) {
+  rssiValueEl.textContent = `${rssi} dBm`
+  let bars = 0
+  if (rssi >= -50) bars = 4
+  else if (rssi >= -65) bars = 3
+  else if (rssi >= -75) bars = 2
+  else bars = 1
+
+  rssiBars.forEach((bar, i) => {
+    bar.classList.toggle('active', i < bars)
+  })
+}
+
 function onTemperatureUpdate(event) {
   const decoder = new TextDecoder('utf-8')
-  const value = decoder.decode(event.target.value)
-  const temp = parseFloat(value)
+  const raw = decoder.decode(event.target.value)
+
+  let temp, rssi
+  try {
+    const data = JSON.parse(raw)
+    temp = data.t
+    rssi = data.r
+  } catch {
+    // fallback pro stary format (plain cislo)
+    temp = parseFloat(raw)
+  }
 
   if (!isNaN(temp)) {
     tempEl.textContent = temp.toFixed(1)
     tempEl.classList.toggle('hot', temp >= 45)
     lastUpdateEl.textContent = `Aktualizovano: ${formatTime(new Date())}`
+  }
+  if (rssi !== undefined) {
+    updateRSSI(rssi)
   }
 }
 
